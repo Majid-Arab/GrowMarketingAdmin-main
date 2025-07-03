@@ -1,14 +1,5 @@
-import {
-  TextField,
-} from "@mui/material";
-import { useEffect, useState } from "react";
-import React from "react";
-import { updateUser } from "../../redux/action/user";
+import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import {
-  PiNotepad,
-  PiXLight,
-} from "react-icons/pi";
 import {
   Divider,
   Dialog,
@@ -16,52 +7,93 @@ import {
   DialogTitle,
   Slide,
   DialogActions,
+  TextField,
 } from "@mui/material";
+import { PiNotepad, PiXLight } from "react-icons/pi";
+import { updateUser } from "../../redux/action/user";
 
 const Transition = React.forwardRef(function Transition(props, ref) {
   return <Slide direction="down" ref={ref} {...props} />;
 });
 
-const EditModal = ({ open, setOpen }) => {
-  /////////////////////////////////////// VARIABLES ///////////////////////////////////////
+const EditClient = ({ open, setOpen, scroll }) => {
+  //////////////////////////////////////// VARIABLES /////////////////////////////////////
   const dispatch = useDispatch();
-  const { currentClient, isFetching, error } = useSelector(
-    (state) => state.user
-  );
-  const initialClientState = {
-    firstName: "",
-    username: "",
-    email: "",
-    phone: "",
-  };
+  const { currentEmployee: currentClient, isFetching } = useSelector((state) => state.user);
 
-  /////////////////////////////////////// STATES ///////////////////////////////////////
-  const [clientData, setClientData] = useState(currentClient);
-  /////////////////////////////////////// USE EFFECT ///////////////////////////////////////
+  //////////////////////////////////////// STATE /////////////////////////////////////
+  const [clientData, setClientData] = useState({
+    firstName: "",
+    lastName: "",
+    username: "",
+    password: "",
+    phone: "",
+    email: "",
+  });
+  const [errors, setErrors] = useState({});
+
+  // Populate form when client changes
   useEffect(() => {
-    setClientData(currentClient);
+    if (currentClient) {
+      setClientData({
+        firstName: currentClient.firstName || "",
+        lastName: currentClient.lastName || "",
+        username: currentClient.username || "",
+        password: "", // do not prefill password
+        phone: currentClient.phone || "",
+        email: currentClient.email || "",
+      });
+    }
   }, [currentClient]);
 
-  /////////////////////////////////////// FUNCTIONS ///////////////////////////////////////
+  //////////////////////////////////////// HELPERS /////////////////////////////////////
+  const validate = () => {
+    const newErrors = {};
+    if (!clientData.firstName.trim()) newErrors.firstName = "First name is required";
+    if (!clientData.lastName.trim()) newErrors.lastName = "Last name is required";
+    if (!clientData.username.trim()) newErrors.username = "Username is required";
+    if (!clientData.phone.trim()) newErrors.phone = "Phone is required";
+    if (
+      clientData.email &&
+      !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(clientData.email)
+    ) {
+      newErrors.email = "Invalid email";
+    }
+    return newErrors;
+  };
+
+  //////////////////////////////////////// FUNCTIONS /////////////////////////////////////
   const handleSubmit = (e) => {
     e.preventDefault();
-    dispatch(updateUser(currentClient._id, clientData, clientData?.role));
-    setClientData(initialClientState);
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length) {
+      setErrors(validationErrors);
+      return;
+    }
+    // Prepare payload (omit empty password)
+    const payload = { ...clientData };
+    if (!payload.password) delete payload.password;
+
+    dispatch(updateUser(currentClient._id, payload));
     setOpen(false);
   };
 
-  const handleInputChange = (field, value) => {
-    setClientData((prevFilters) => ({ ...prevFilters, [field]: value }));
+  const handleChange = (field, value) => {
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: "" }));
+    }
+    setClientData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleClose = () => {
     setOpen(false);
+    setErrors({});
   };
-  console.log("Current Client:", currentClient);
-  console.log("Client Data:", clientData);
+
+  //////////////////////////////////////// RENDER /////////////////////////////////////
   return (
     <Dialog
-      scroll={"paper"}
+      scroll={scroll}
       open={open}
       TransitionComponent={Transition}
       keepMounted
@@ -84,78 +116,108 @@ const EditModal = ({ open, setOpen }) => {
           </div>
           <Divider />
           <table className="mt-4">
-            <tr>
-              <td className="pb-4 text-lg">First Name </td>
-              <td className="pb-4">
-                <TextField
-                  size="small"
-                  fullWidth
-                  value={clientData?.firstName}
-                  onChange={(e) =>
-                    handleInputChange("firstName", e.target.value)
-                  }
-                />
-              </td>
-            </tr>
-            <tr>
-              <td className="pb-4 text-lg">Email </td>
-              <td className="pb-4">
-                <TextField
-                  size="small"
-                  fullWidth
-                  placeholder="Optional"
-                  value={clientData?.email}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
-                />
-              </td>
-            </tr>
-            <tr>
-              <td className="pb-4 text-lg">User Name </td>
-              <td className="pb-4">
-                <TextField
-                  size="small"
-                  fullWidth
-                  value={clientData?.username}
-                  onChange={(e) =>
-                    handleInputChange("username", e.target.value)
-                  }
-                />
-              </td>
-            </tr>
-            <tr>
-              <td className="flex items-start pt-2 text-lg">Phone </td>
-              <td className="pb-4">
-                <TextField
-                  type="number"
-                  size="small"
-                  value={clientData?.phone}
-                  onChange={(e) => handleInputChange("phone", e.target.value)}
-                  fullWidth
-                />
-              </td>
-            </tr>
+            <tbody>
+              <tr>
+                <td className="pb-4 text-lg">First Name</td>
+                <td className="pb-4">
+                  <TextField
+                    size="small"
+                    fullWidth
+                    value={clientData.firstName}
+                    onChange={(e) => handleChange("firstName", e.target.value)}
+                    error={!!errors.firstName}
+                    helperText={errors.firstName}
+                  />
+                </td>
+              </tr>
+              <tr>
+                <td className="pb-4 text-lg">Last Name</td>
+                <td className="pb-4">
+                  <TextField
+                    size="small"
+                    fullWidth
+                    value={clientData.lastName}
+                    onChange={(e) => handleChange("lastName", e.target.value)}
+                    error={!!errors.lastName}
+                    helperText={errors.lastName}
+                  />
+                </td>
+              </tr>
+              <tr>
+                <td className="pb-4 text-lg">Username</td>
+                <td className="pb-4">
+                  <TextField
+                    size="small"
+                    fullWidth
+                    value={clientData.username}
+                    onChange={(e) => handleChange("username", e.target.value)}
+                    error={!!errors.username}
+                    helperText={errors.username}
+                  />
+                </td>
+              </tr>
+              <tr>
+                <td className="pb-4 text-lg">Email</td>
+                <td className="pb-4">
+                  <TextField
+                    size="small"
+                    fullWidth
+                    placeholder="Optional"
+                    value={clientData.email}
+                    onChange={(e) => handleChange("email", e.target.value)}
+                    error={!!errors.email}
+                    helperText={errors.email}
+                  />
+                </td>
+              </tr>
+              <tr>
+                <td className="flex items-start pt-2 text-lg">Password</td>
+                <td className="pb-4">
+                  <TextField
+                    type="password"
+                    size="small"
+                    fullWidth
+                    placeholder="Leave blank to keep current"
+                    value={clientData.password}
+                    onChange={(e) => handleChange("password", e.target.value)}
+                  />
+                </td>
+              </tr>
+              <tr>
+                <td className="flex items-start pt-2 text-lg">Phone</td>
+                <td className="pb-4">
+                  <TextField
+                    type="number"
+                    size="small"
+                    fullWidth
+                    value={clientData.phone}
+                    onChange={(e) => handleChange("phone", e.target.value)}
+                    error={!!errors.phone}
+                    helperText={errors.phone}
+                  />
+                </td>
+              </tr>
+            </tbody>
           </table>
         </div>
       </DialogContent>
       <DialogActions>
         <button
           onClick={handleClose}
-          variant="contained"
-          type="reset"
           className="bg-[#d7d7d7] px-4 py-2 rounded-lg text-gray-500 mt-4 hover:text-white hover:bg-[#6c757d] border-[2px] border-[#efeeee] hover:border-[#d7d7d7] font-thin transition-all"
         >
           Cancel
         </button>
         <button
           onClick={handleSubmit}
-          variant="contained"
+          disabled={isFetching}
           className="bg-primary-red px-4 py-2 rounded-lg text-white mt-4 hover:bg-red-400 font-thin"
         >
-          {isFetching ? "Submitting..." : "Submit"}
+          {isFetching ? "Updating..." : "Update"}
         </button>
       </DialogActions>
     </Dialog>
   );
 };
 
-export default EditModal;
+export default EditClient;
