@@ -47,25 +47,42 @@ const EditClient = ({ open, setOpen, scroll }) => {
   }, [currentClient]);
 
   //////////////////////////////////////// HELPERS /////////////////////////////////////
-  const validate = () => {
-    const newErrors = {};
-    if (!clientData.firstName.trim()) newErrors.firstName = "First name is required";
-    if (!clientData.lastName.trim()) newErrors.lastName = "Last name is required";
-    if (!clientData.username.trim()) newErrors.username = "Username is required";
-    if (!clientData.phone.trim()) newErrors.phone = "Phone is required";
-    if (
-      clientData.email &&
-      !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(clientData.email)
-    ) {
-      newErrors.email = "Invalid email";
+  const validateField = (name, value) => {
+    let error = "";
+
+    switch (name) {
+      case "firstName":
+        if (!value.trim()) error = "First name is required";
+        break;
+      case "lastName":
+        if (!value.trim()) error = "Lastname is required";
+        break;
+      case "username":
+        if (!value.trim()) error = "Username is required";
+        break;
+      case "email":
+        if (value && !/\S+@\S+\.\S+/.test(value))
+          error = "Invalid email format";
+        else if (!value.trim()) error = "Email is required";
+        break;
+      case "phone":
+        if (!value) error = "Phone number is required";
+        else if (value.length < 11)
+          error = "Phone must be at least 11 characters long";
+        else if (!/^\d+$/.test(value))
+          error = "Phone number must contain only digits";
+        break;
+      default:
+        break;
     }
-    return newErrors;
+
+    return error;
   };
 
   //////////////////////////////////////// FUNCTIONS /////////////////////////////////////
   const handleSubmit = (e) => {
     e.preventDefault();
-    const validationErrors = validate();
+    const validationErrors = validateField();
     if (Object.keys(validationErrors).length) {
       setErrors(validationErrors);
       return;
